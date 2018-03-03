@@ -15,6 +15,7 @@ output: html_document
   * Inversion beeinflusst Messwerte stark - [Zugriff zu Inversion](https://github.com/OpenAirCgn/software)
 * Luftdaten.info Projekt Stuttgart - [Webseite](https://luftdaten.info/), [github](https://github.com/opendata-stuttgart)
 * Schwellenwerte - [Umweltbundesamt](https://www.umweltbundesamt.de/daten/luft/stickstoffdioxid-belastung#textpart-1)
+* Analyse von Amir - [Webseite](http://amir-yousefi.de/Analyse.html)
 
 * Visualisierung von Martin (Code noch nicht öffentlich, noch nicht auf der Webseite)
 
@@ -49,6 +50,10 @@ Luftdaten.info / Stuttgart: Fortführung des Projekts ist abhängig davon, dass 
 * Wie erreichen wir dies für die in Köln verwendeten Sensoren?
 * Ein Projekt mit dem Forschungszentrum Jülich dazu ist geplant. 
 
+Bisher 3 Versionen des messendes Boards
+
+* In der neusten Version (Sensor-ID 1fee-*) wird alle 5 Sekunden gemessen und alle 30 Sekunden der Mittelwert verwendet.
+
 
 
 # Datenquellen
@@ -59,46 +64,51 @@ Luftdaten.info / Stuttgart: Fortführung des Projekts ist abhängig davon, dass 
   * NO2 2010+ [csv](http://opendata.lanuv.nrw.de/abt4/OpenKontiLUQS_NO2_2010-2019.csv)
   * NO2 Aktuell [csv](https://www.lanuv.nrw.de/fileadmin/lanuv/luft/temes/NO2_AM1H.csv)
 * LANUV [Messstationen](https://www.lanuv.nrw.de/umwelt/luft/immissionen/messorte-und-werte/)
+* LANUV [API Beschreibung](https://www.th-koeln.de/mam/downloads/deutsch/hochschule/fakultaeten/informations_medien_und_elektrotechnik/forschung/dbap8_dienste_zur_unterstutzung_von_sensordiensten.pdf)
 
 
 
 # Datenexploration
-
 ```{r}
-# install.package("tidyverse")
-library(tidyverse)
-library(ggplot2)
-library(plotly)
+# install.package("packagename")
+
+suppressMessages({
+  library(tidyverse)
+  library(jsonlite)
+  library(ggplot2)
+  library(plotly)
+})
 
 options(stringsAsFactors = FALSE)
 
 ```
 
+
 ## LANUV
 ```{r}
-# Beispiel-Dateien herunterladen und öffnen
+# Dateien herunterladen und öffnen
 # 1 H Mittelwert NO2 in Mikrogramm / Kubikmeter
 url_lanuv_csv <- "http://opendata.lanuv.nrw.de/abt4/OpenKontiLUQS_NO2_2010-2019.csv"
 download.file(url_lanuv_csv, "lanuv_no2_2010-19.csv")
-data_lanuv <- read.csv2("lanuv_no2_2010-19.csv", comment.char = "#", encoding = "latin1")
+data_lanuv_2010 <- read.csv2("lanuv_no2_2010-19.csv", comment.char = "#", encoding = "latin1")
 
 url_lanuv_aktuell <- "https://www.lanuv.nrw.de/fileadmin/lanuv/luft/temes/NO2_AM1H.csv"
 download.file(url_lanuv_aktuell, "lanuv_no2_aktuell.csv")
 data_lanuv_aktuell <- read.csv2("lanuv_no2_aktuell.csv", comment.char = "#", encoding = "latin1")
 
 # Hübsch machen
-names(data_lanuv) <- abbreviate(names(data_lanuv))
+names(data_lanuv_2010) <- abbreviate(names(data_lanuv_2010))
 names(data_lanuv_aktuell) <- abbreviate(names(data_lanuv_aktuell))
 
 # Beschränke auf Köln
 cologne_stations <- c("VKCL", "VKTU", "CHOR", "RODE")
-data_lanuv <- data_lanuv %>%
+data_lanuv_2010 <- data_lanuv_2010 %>%
   select(Datm, Zeit, cologne_stations)
 data_lanuv_aktuell <- data_lanuv_aktuell %>%
   select(Datm, Zeit, cologne_stations)
 
 # Kombiniere Dateien
-data_lanuv <- bind_rows(data_lanuv, data_lanuv_aktuell)
+data_lanuv <- bind_rows(data_lanuv_2010, data_lanuv_aktuell)
 
 # long format, data types
 data_lanuv <- data_lanuv %>%
@@ -106,12 +116,29 @@ data_lanuv <- data_lanuv %>%
 data_lanuv <- data_lanuv %>%
   mutate(zeitstempel = paste0(Datm, " ", Zeit, ":00")) %>% 
   mutate(zeitstempel = as.POSIXct(zeitstempel, format = "%d.%m.%Y %H:%M:%S", tz = "CET")) %>% 
-  select(-Datm, -Zeit) %>%
   mutate(clippling = grepl("<", NO2)) %>%
   mutate(NO2 = gsub("<", "", NO2)) %>%  # change this line depending on use case!
   mutate(NO2 = as.integer(NO2))
+data_lanuv <- data_lanuv %>%
+  mutate(Stunde = as.integer(substring(Zeit, 1, 2))) %>%
+  select(-Zeit)
+```
 
-# Überblick
+### Überblick: Stunden
+```{r}
+ggplotly(
+  data_lanuv %>% 
+    filter(zeitstempel > max(zeitstempel - 30 * 60 * 60 * 24)) %>%
+    group_by(station, Stunde) %>% 
+    ggplot() + 
+    aes(x = Stunde, group = Stunde, y = NO2) +
+    facet_wrap(~station) +
+    geom_boxplot()
+)
+```
+
+### Überblick: Zeitreihe
+```{r}
 ggplotly(
   data_lanuv %>%
     filter(zeitstempel > max(zeitstempel - 30 * 60 * 60 * 24)) %>%
@@ -120,14 +147,50 @@ ggplotly(
     facet_wrap(~station) + 
     geom_line()
 )
-
 ```
+
 
 ## OpenAirCgn
 ```{r}
-# Beispiel-Dateien herunterladen und öffnen
-url_th_example <- "https://babeauf.nt.fh-koeln.de/Messwerte/?senid=088565bd-b46a-4843-816b-ee1ea9253794&parvor_nr=1&period=1d&ts=1514764800&dx=1"
-example_th <- GET(url_th_example)
+# Dateien herunterladen und öffnen
+# Welche Sensoren gibt es?
+if ( FALSE ) {
+  # wird ersetzt
+  url_sensoren <- "https://babeauf.nt.fh-koeln.de/alleDfds/"
+  download.file(url_sensoren, "openaircgn_sensors.json")
+  sensors_raw <- read_file("openaircgn_sensors.json")
+  sensors_raw <- gsub("'", '"', sensors_raw)
+  sensors <- fromJSON(sensors_raw)
+}
+
+# Ein vordefinierter "Datendump" liefert genaue Informationen über die Sensoren
+# Der Dump enthält Messwerte nur mit dx=1800
+url_dump <- "https://babeauf.nt.fh-koeln.de/data/daten-dfds.json"
+download.file(url_dump, "openaircgn_dump.json")
+dump_th <- fromJSON("openaircgn_dump.json")
+
+sensor_IDs <- names(dump_th$Messwerte)
+extract_parvor_nr <- function(senID) {
+  names(dump_th$Messwerte[[senID]])
+}
+sensors <- map(sensor_IDs, extract_parvor_nr)
+names(sensors) <- sensors_IDs
+
+# Vollständige Daten herunterladen
+for (senID in names(sensors)) {
+  for (parvor_nr in sensors[[senID]]){
+    #cat(senID, parvor_nr, "\n")
+  }
+}
+
+# url_th_example_1 <- "https://babeauf.nt.fh-koeln.de/Messwerte/?senid=088565bd-b46a-4843-816b-ee1ea9253794&parvor_nr=1&period=1m&ts=1514764800&dx=1"
+# download.file(url_th_example, "openaircgn_th_test.json")
+# data_th <- fromJSON("openaircgn_th_test.json")
 
 ```
+
+
+
+
+
 
