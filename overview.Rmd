@@ -1,0 +1,70 @@
+---
+title: "Open Data Day 2018 cologne - Notizen"
+author: Stephan Porz
+date: 2018-03-03
+output: html_document
+---
+
+# Informationsquellen
+
+* Dieses repository - [data-raccoon/opendataday2018cgn](https://github.com/data-raccoon/opendataday2018cgn)
+* Luftqualitätsdaten NRW - [LANUV](https://www.lanuv.nrw.de/landesamt/daten_und_informationsdienste/)i
+* Luftqualitätsdaten Bund - [Umweltbundesamt](https://www.umweltbundesamt.de/daten/luft)
+* Private Datenerhebung mit OpenAirCgn - [Webseite](https://openair.cologne), [Forum](https://openair.cologne/forum), [github](https://github.com/OpenAirCgn)
+  * Daten werden gesendet an die TH Köln - [Datenzugriff](https://github.com/OpenAirCgn/Meta/issues/7)
+  * Inversion beeinflusst Messwerte stark - [Zugriff zu Inversion](https://github.com/OpenAirCgn/software)
+* Luftdaten.info Projekt Stuttgart - [Webseite](https://luftdaten.info/), [github](https://github.com/opendata-stuttgart)
+* Schwellenwerte - [Umweltbundesamt](https://www.umweltbundesamt.de/daten/luft/stickstoffdioxid-belastung#textpart-1)
+
+* Visualisierung von Martin (Code noch nicht öffentlich, noch nicht auf der Webseite)
+
+
+
+# Notizen zum Projekt
+
+Fokus auf Stickstoffdioxid (NO2) Belastung
+
+Private Daten aus dem OpenAirCgn Projekt passen noch nicht überein mit den offiziellen Daten.
+
+* a) Analoge Messung muss noch in physikalisch interpretierbare Einheiten umgewandelt werden.
+* b) Es fehlen noch Korrekturen für Eigenheiten der Messapperatur.
+* c) Gibt es Unterschiede zwischen den verschiedenen Messapperaturen?
+
+Es gibt einige private Sensoren, die sehr nahe an den offiziellen Messstationen liegen.
+
+* Möglichkeit zur Eichung?
+
+Forum: Standortdaten werden aus Gründen der Privatsphäre z.T. verfälscht. Anderseits sollen basierend auf den flächendeckenden Daten Modelle entwickelt werden, die Strömungsverhalten beschreiben. Je nach Modell-detailtiefe kann das negative Auswirkungen haben. 
+
+* Der Fakt das Standortdaten verfälscht werden sollte zumindest deutlich Dokumentiert werden.
+
+Forum: Es werden nur Temperaturdifferenzen benötigt. 
+
+* Es sollte klar dokumentiert werden, dass die absolute Temperatur (derzeit) nicht zur Verfügung steht. 
+* Werden für alle relevanten Anwendungsfälle nur Differenzen benötigt? 
+* Ist eine genügend gute Korrektur der Temperaturwerte möglich?
+
+Luftdaten.info / Stuttgart: Fortführung des Projekts ist abhängig davon, dass genügend gute Daten erstellt werden können. In Stuttgart wurde dies für die verwendeten Feinstaubsensoren geprüft und als genügend gut bewertet.
+
+* Wie erreichen wir dies für die in Köln verwendeten Sensoren?
+* Ein Projekt mit dem Forschungszentrum Jülich dazu ist geplant. 
+
+
+
+# Datenquellen
+
+* LANUV [Berichte und Trends](https://www.lanuv.nrw.de/umwelt/luft/immissionen/berichte-und-trends/)
+  * Extrahiertes URL Format: https://www.lanuv.nrw.de/fileadmin/lanuv/luft/temes/<YYYY>/mo<MM>/tagwert/<DD>sm.xls
+* OpenAirCgn mit TH-Köln Kooperation [github Issue](https://github.com/OpenAirCgn/Meta/issues/7)
+  * 
+
+
+
+
+
+# Datenexploration
+
+
+
+
+
