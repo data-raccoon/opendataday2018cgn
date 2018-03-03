@@ -53,18 +53,81 @@ Luftdaten.info / Stuttgart: Fortführung des Projekts ist abhängig davon, dass 
 
 # Datenquellen
 
-* LANUV [Berichte und Trends](https://www.lanuv.nrw.de/umwelt/luft/immissionen/berichte-und-trends/)
-  * Extrahiertes URL Format: https://www.lanuv.nrw.de/fileadmin/lanuv/luft/temes/<YYYY>/mo<MM>/tagwert/<DD>sm.xls
 * OpenAirCgn mit TH-Köln Kooperation [github Issue](https://github.com/OpenAirCgn/Meta/issues/7)
-  * 
-
-
+  * API https://babeauf.nt.fh-koeln.de/Messwerte/?senid=088565bd-b46a-4843-816b-ee1ea9253794&parvor_nr=1&period=1w&ts=1512086400&dx=1
+* LANUV [Einzelwerte kontinuierlicher Messungen](https://www.lanuv.nrw.de/umwelt/luft/immissionen/berichte-und-trends/einzelwerte-kontinuierlicher-messungen/)
+  * NO2 2010+ [csv](http://opendata.lanuv.nrw.de/abt4/OpenKontiLUQS_NO2_2010-2019.csv)
+  * NO2 Aktuell [csv](https://www.lanuv.nrw.de/fileadmin/lanuv/luft/temes/NO2_AM1H.csv)
+* LANUV [Messstationen](https://www.lanuv.nrw.de/umwelt/luft/immissionen/messorte-und-werte/)
 
 
 
 # Datenexploration
 
+```{r}
+# install.package("tidyverse")
+library(tidyverse)
+library(ggplot2)
+library(plotly)
 
+options(stringsAsFactors = FALSE)
 
+```
 
+## LANUV
+```{r}
+# Beispiel-Dateien herunterladen und öffnen
+# 1 H Mittelwert NO2 in Mikrogramm / Kubikmeter
+url_lanuv_csv <- "http://opendata.lanuv.nrw.de/abt4/OpenKontiLUQS_NO2_2010-2019.csv"
+download.file(url_lanuv_csv, "lanuv_no2_2010-19.csv")
+data_lanuv <- read.csv2("lanuv_no2_2010-19.csv", comment.char = "#", encoding = "latin1")
+
+url_lanuv_aktuell <- "https://www.lanuv.nrw.de/fileadmin/lanuv/luft/temes/NO2_AM1H.csv"
+download.file(url_lanuv_aktuell, "lanuv_no2_aktuell.csv")
+data_lanuv_aktuell <- read.csv2("lanuv_no2_aktuell.csv", comment.char = "#", encoding = "latin1")
+
+# Hübsch machen
+names(data_lanuv) <- abbreviate(names(data_lanuv))
+names(data_lanuv_aktuell) <- abbreviate(names(data_lanuv_aktuell))
+
+# Beschränke auf Köln
+cologne_stations <- c("VKCL", "VKTU", "CHOR", "RODE")
+data_lanuv <- data_lanuv %>%
+  select(Datm, Zeit, cologne_stations)
+data_lanuv_aktuell <- data_lanuv_aktuell %>%
+  select(Datm, Zeit, cologne_stations)
+
+# Kombiniere Dateien
+data_lanuv <- bind_rows(data_lanuv, data_lanuv_aktuell)
+
+# long format, data types
+data_lanuv <- data_lanuv %>%
+  gather(key = "station", value = "NO2", cologne_stations)
+data_lanuv <- data_lanuv %>%
+  mutate(zeitstempel = paste0(Datm, " ", Zeit, ":00")) %>% 
+  mutate(zeitstempel = as.POSIXct(zeitstempel, format = "%d.%m.%Y %H:%M:%S", tz = "CET")) %>% 
+  select(-Datm, -Zeit) %>%
+  mutate(clippling = grepl("<", NO2)) %>%
+  mutate(NO2 = gsub("<", "", NO2)) %>%  # change this line depending on use case!
+  mutate(NO2 = as.integer(NO2))
+
+# Überblick
+ggplotly(
+  data_lanuv %>%
+    filter(zeitstempel > max(zeitstempel - 30 * 60 * 60 * 24)) %>%
+    ggplot() + 
+    aes(x = zeitstempel, y = NO2, color = station) + 
+    facet_wrap(~station) + 
+    geom_line()
+)
+
+```
+
+## OpenAirCgn
+```{r}
+# Beispiel-Dateien herunterladen und öffnen
+url_th_example <- "https://babeauf.nt.fh-koeln.de/Messwerte/?senid=088565bd-b46a-4843-816b-ee1ea9253794&parvor_nr=1&period=1d&ts=1514764800&dx=1"
+example_th <- GET(url_th_example)
+
+```
 
